@@ -17,20 +17,32 @@ class PokemonListViewModel : ViewModel() {
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
 
+    private var currentOffset = 0
+    private val pageSize = 20
+    private var isLastPage = false
+    private var isCurrentlyLoading = false
+
     init {
-        loadPokemonList()
+        loadNextPage()
     }
 
-    private fun loadPokemonList() {
+    fun loadNextPage() {
+        if (isCurrentlyLoading || isLastPage) return
+
         viewModelScope.launch {
+            isCurrentlyLoading = true
             _isLoading.value = true
             try {
-                val result = repository.getPokemonList()
-                _pokemonList.value = result.results
+                val result = repository.getPokemonList(pageSize, currentOffset)
+                val current = _pokemonList.value.orEmpty()
+                _pokemonList.value = current + result.results
+                currentOffset += pageSize
+                if (result.results.size < pageSize) isLastPage = true
             } catch (e: Exception) {
                 // TODO
             } finally {
                 _isLoading.value = false
+                isCurrentlyLoading = false
             }
         }
     }
