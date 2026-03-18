@@ -7,9 +7,10 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import org.pelmeshke.nulldex.data.model.PokemonEntry
 import org.pelmeshke.nulldex.repository.PokemonRepository
-
 class PokemonListViewModel : ViewModel() {
     private val repository = PokemonRepository()
+
+    private var allPokemons: List<PokemonEntry> = emptyList()
 
     private val _pokemonList = MutableLiveData<List<PokemonEntry>>()
     val pokemonList: LiveData<List<PokemonEntry>> = _pokemonList
@@ -21,29 +22,50 @@ class PokemonListViewModel : ViewModel() {
     private val pageSize = 20
     private var isLastPage = false
     private var isCurrentlyLoading = false
+    private var searchQuery = ""
 
     init {
-        loadNextPage()
+        loadAllPokemons()
     }
 
-    fun loadNextPage() {
-        if (isCurrentlyLoading || isLastPage) return
-
+    private fun loadAllPokemons() {
         viewModelScope.launch {
-            isCurrentlyLoading = true
             _isLoading.value = true
             try {
-                val result = repository.getPokemonList(pageSize, currentOffset)
-                val current = _pokemonList.value.orEmpty()
-                _pokemonList.value = current + result.results
-                currentOffset += pageSize
-                if (result.results.size < pageSize) isLastPage = true
+                val result = repository.getPokemonList(limit = 100000, offset = 0)
+                allPokemons = result.results
+                applySearch()
             } catch (e: Exception) {
                 // TODO
             } finally {
                 _isLoading.value = false
-                isCurrentlyLoading = false
             }
         }
+    }
+
+    fun search(query: String) {
+        searchQuery = query
+        applySearch()
+    }
+
+    private fun applySearch() {
+        _pokemonList.value = if (searchQuery.isEmpty()) {
+            allPokemons.take(pageSize)
+        } else {
+            allPokemons.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+
+    fun loadNextPage() {
+        if (searchQuery.isNotEmpty()) return // при поиске пагинация не нужна
+        if (isCurrentlyLoading || isLastPage) return
+
+        val currentSize = _pokemonList.value?.size ?: 0
+        val nextPage = allPokemons.drop(currentSize).take(pageSize)
+        if (nextPage.isEmpty()) {
+            isLastPage = true
+            return
+        }
+        _pokemonList.value = _pokemonList.value.orEmpty() + nextPage
     }
 }
