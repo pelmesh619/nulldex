@@ -22,11 +22,12 @@ class PokemonAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(entry: PokemonEntry) {
-            binding.tvName.text = entry.name
-
             val id = entry.url.trimEnd('/').split("/").last()
-            val spriteUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png"
 
+            binding.tvNumber.text = "#${id.padStart(3, '0')}"
+            binding.tvName.text = entry.name.replaceFirstChar { it.uppercase() }
+
+            val spriteUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png"
             Glide.with(binding.ivSprite)
                 .load(spriteUrl)
                 .into(binding.ivSprite)
