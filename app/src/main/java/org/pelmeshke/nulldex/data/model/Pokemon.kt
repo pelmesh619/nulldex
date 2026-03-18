@@ -1,5 +1,7 @@
 package org.pelmeshke.nulldex.data.model
 
+import com.google.gson.annotations.SerializedName
+
 data class Pokemon(
     val id: Int,
     val name: String,
@@ -10,7 +12,8 @@ data class Pokemon(
 )
 
 data class Sprites(
-    val frontDefault: String
+    @SerializedName("front_default")
+    val frontDefault: String?
 )
 
 data class TypeSlot(
