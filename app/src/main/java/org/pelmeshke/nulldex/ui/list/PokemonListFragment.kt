@@ -10,8 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.MenuProvider
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -72,24 +70,61 @@ class PokemonListFragment : Fragment() {
         }
 
         requireActivity().addMenuProvider(object : MenuProvider {
+            var isRestoring = false
+
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 menuInflater.inflate(R.menu.menu_search, menu)
+                Log.d("Search", "onCreateMenu, lastQuery: ${viewModel.lastQuery}")
 
                 val searchItem = menu.findItem(R.id.action_search)
                 val searchView = searchItem.actionView as SearchView
+
+                if (viewModel.lastQuery.isNotEmpty()) {
+                    Log.d("Search", "restoring query: ${viewModel.lastQuery}")
+                    isRestoring = true
+                    searchItem.expandActionView()
+                    searchView.post {
+                        searchView.setQuery(viewModel.lastQuery, false)
+                        searchView.clearFocus()
+                        isRestoring = false
+                        viewModel.search(viewModel.lastQuery)
+                    }
+                }
 
                 searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                     override fun onQueryTextSubmit(query: String?) = false
 
                     override fun onQueryTextChange(newText: String?): Boolean {
-                        viewModel.search(newText.orEmpty())
+                        Log.d("Search", "onQueryTextChange: $newText, isRestoring: $isRestoring")
+                        if (!isRestoring) {
+                            viewModel.search(newText.orEmpty())
+                        }
                         return true
                     }
                 })
             }
 
-            override fun onMenuItemSelected(menuItem: MenuItem) = false
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return false
+            }
         }, viewLifecycleOwner)
+
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            if (error != null) {
+                binding.errorLayout.isVisible = true
+                binding.recyclerView.isVisible = false
+                binding.tvError.text = error
+                binding.btnRetry.setOnClickListener {
+                    binding.errorLayout.isVisible = false
+                    binding.recyclerView.isVisible = true
+                    viewModel.clearError()
+                    viewModel.loadAllPokemons()
+                }
+            } else {
+                binding.errorLayout.isVisible = false
+                binding.recyclerView.isVisible = true
+            }
+        }
     }
 
     override fun onDestroyView() {
