@@ -1,16 +1,19 @@
-package org.pelmeshke.nulldex
+package org.pelmeshke.nulldex.ui.detail
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowInsetsCompat
+import org.pelmeshke.nulldex.R
 import org.pelmeshke.nulldex.databinding.ActivityPokemonDetailBinding
-import org.pelmeshke.nulldex.ui.detail.PokemonDetailFragment
 
 class PokemonDetailActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPokemonDetailBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i("THEME_CHECK", "theme=${theme?.toString()}")
+
         binding = ActivityPokemonDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
