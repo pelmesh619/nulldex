@@ -4,4 +4,10 @@
         <item name="colorPrimary">@color/gray_primary</item>
         <item name="android:statusBarColor">?attr/colorPrimary</item>
     </style>
+
+    <style name="Theme.NullDex.Translucent" parent="Theme.NullDex">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">false</item>
+    </style>
 </resources>
