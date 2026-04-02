@@ -1,4 +1,4 @@
-package org.pelmeshke.nulldex
+package org.pelmeshke.nulldex.data.local
 
 import android.content.Context
 import org.pelmeshke.nulldex.data.model.PokemonEntry
