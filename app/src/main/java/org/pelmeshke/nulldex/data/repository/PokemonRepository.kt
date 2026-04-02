@@ -1,4 +1,4 @@
-package org.pelmeshke.nulldex.repository
+package org.pelmeshke.nulldex.data.repository
 
 import org.pelmeshke.nulldex.data.api.RetrofitInstance
 
