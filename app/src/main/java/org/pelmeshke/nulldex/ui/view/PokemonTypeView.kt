@@ -1,4 +1,4 @@
-package org.pelmeshke.nulldex.ui
+package org.pelmeshke.nulldex.ui.view
 
 import android.content.Context
 import android.graphics.Canvas
