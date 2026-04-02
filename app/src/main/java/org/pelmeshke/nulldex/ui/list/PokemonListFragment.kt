@@ -1,5 +1,7 @@
 package org.pelmeshke.nulldex.ui.list
 
+import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -12,19 +14,23 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.findNavController
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import org.pelmeshke.nulldex.ui.detail.PokemonDetailActivity
 import org.pelmeshke.nulldex.R
 import org.pelmeshke.nulldex.databinding.FragmentPokemonListBinding
+import org.pelmeshke.nulldex.ui.detail.PokemonDetailFragment
 
 
 class PokemonListFragment : Fragment() {
     private var _binding: FragmentPokemonListBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: PokemonListViewModel by viewModels()
+    private val viewModel by lazy {
+        ViewModelProvider(requireActivity())[PokemonListViewModel::class.java]
+    }
+
     private lateinit var adapter: PokemonAdapter
 
     override fun onCreateView(
@@ -39,9 +45,30 @@ class PokemonListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         adapter = PokemonAdapter { entry ->
-            val action = PokemonListFragmentDirections
-                .actionListFragmentToDetailFragment(entry.name)
-            findNavController().navigate(action)
+            val container = view.findViewById<View>(R.id.detailContainer)
+            if (container != null && isLandscape()) {
+                val fragment = PokemonDetailFragment.newInstance(entry.name, isTwoPane = true)
+                childFragmentManager.beginTransaction()
+                    .replace(R.id.detailContainer, fragment)
+                    .commit()
+            } else {
+                val intent = Intent(activity?.baseContext, PokemonDetailActivity::class.java).apply {
+                    putExtra("pokemon_name", entry.name)
+                }
+                startActivity(intent)
+            }
+        }
+
+        val swipeRefresh = binding.swipeRefresh
+        swipeRefresh?.setOnRefreshListener {
+            viewModel.refresh()
+        }
+
+        viewModel.isRefreshing.observe(viewLifecycleOwner) { refreshing ->
+            swipeRefresh?.isRefreshing = refreshing
+        }
+        viewModel.isListVisible.observe(viewLifecycleOwner) { isListVisible ->
+            binding.recyclerView.isVisible = isListVisible
         }
 
         binding.recyclerView.adapter = adapter
@@ -66,7 +93,7 @@ class PokemonListFragment : Fragment() {
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { loading ->
-            binding.progressBar.isVisible = loading
+            binding.progressBar?.isVisible = loading
         }
 
         requireActivity().addMenuProvider(object : MenuProvider {
@@ -85,7 +112,7 @@ class PokemonListFragment : Fragment() {
                     searchItem.expandActionView()
                     searchView.post {
                         searchView.setQuery(viewModel.lastQuery, false)
-                        searchView.clearFocus()
+//                        searchView.clearFocus()
                         isRestoring = false
                         viewModel.search(viewModel.lastQuery)
                     }
@@ -102,6 +129,11 @@ class PokemonListFragment : Fragment() {
                         return true
                     }
                 })
+                searchView.setOnCloseListener {
+                    isRestoring = false
+                    viewModel.lastQuery = ""
+                    false
+                }
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
@@ -125,6 +157,10 @@ class PokemonListFragment : Fragment() {
                 binding.recyclerView.isVisible = true
             }
         }
+    }
+
+    private fun isLandscape(): Boolean {
+        return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
 
     override fun onDestroyView() {
