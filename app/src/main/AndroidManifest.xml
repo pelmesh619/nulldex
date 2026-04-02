@@ -13,8 +13,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.NullDex">
+
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.main.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.NullDex">
@@ -24,7 +25,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".FavoriteActivity" />
-        <activity android:name=".PokemonDetailActivity" />
+        <activity android:name=".ui.favorites.FavoriteActivity" />
+        <activity android:name=".ui.detail.PokemonDetailActivity"
+            android:theme="@style/Theme.NullDex.Translucent" />
     </application>
 </manifest>
