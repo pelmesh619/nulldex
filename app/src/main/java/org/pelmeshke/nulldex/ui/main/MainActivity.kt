@@ -1,23 +1,25 @@
-package org.pelmeshke.nulldex
+package org.pelmeshke.nulldex.ui.main
 
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.util.Log
-import android.view.WindowInsets
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupActionBarWithNavController
+import org.pelmeshke.nulldex.ui.favorites.FavoriteActivity
+import org.pelmeshke.nulldex.R
 import org.pelmeshke.nulldex.databinding.ActivityMainBinding
 import org.pelmeshke.nulldex.ui.list.PokemonListFragmentDirections
+import org.pelmeshke.nulldex.ui.list.PokemonListViewModel
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var navController: NavController
+
+    private val viewModel: PokemonListViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +37,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, FavoriteActivity::class.java))
         }
 
+        binding.fabRefreshPokemonList.setOnClickListener {
+            viewModel.refresh()
+        }
+
         navController.addOnDestinationChangedListener { _, destination, _ ->
             if (destination.id == R.id.pokemonDetailFragment) {
                 binding.fabFavorites.hide()
@@ -45,15 +51,24 @@ class MainActivity : AppCompatActivity() {
 
         intent.getStringExtra("pokemon_name")?.let { name ->
             navController.navigate(
-                PokemonListFragmentDirections.actionListFragmentToDetailFragment(name)
+                PokemonListFragmentDirections.Companion.actionListFragmentToDetailFragment(name)
             )
         }
 
         binding.root.post {
-            val systemBars =
-                WindowInsetsCompat.toWindowInsetsCompat(window.decorView.rootWindowInsets)
-                    .getInsets(WindowInsetsCompat.Type.systemBars())
-            binding.root.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+
+            val insets = WindowInsetsCompat.toWindowInsetsCompat(window.decorView.rootWindowInsets)
+
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+
+            binding.root.setPadding(
+                maxOf(systemBars.left, cutout.left),
+                systemBars.top,
+                maxOf(systemBars.right, cutout.right),
+                systemBars.bottom
+            )
         }
     }
 
@@ -61,7 +76,7 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         intent.getStringExtra("pokemon_name")?.let { name ->
             navController.navigate(
-                PokemonListFragmentDirections.actionListFragmentToDetailFragment(name)
+                PokemonListFragmentDirections.Companion.actionListFragmentToDetailFragment(name)
             )
         }
     }
