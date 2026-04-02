@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import org.pelmeshke.nulldex.data.model.Pokemon
-import org.pelmeshke.nulldex.repository.PokemonRepository
+import org.pelmeshke.nulldex.data.repository.PokemonRepository
 import retrofit2.HttpException
 import java.io.IOException
 
