@@ -7,5 +7,31 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Base -->
     <color name="gray_primary">#FF424242</color>
+    <color name="background">#FFF5F5F5</color>
+    <color name="surface">#FFFFFFFF</color>
+    <color name="on_surface">#FF212121</color>
+    <color name="on_surface_secondary">#FF888888</color>
+
+    <!-- Pokemon types -->
+    <color name="type_grass">#FF78C850</color>
+    <color name="type_fire">#FFF08030</color>
+    <color name="type_water">#FF6890F0</color>
+    <color name="type_electric">#FFF8D030</color>
+    <color name="type_psychic">#FFF85888</color>
+    <color name="type_ice">#FF98D8D8</color>
+    <color name="type_dragon">#FF7038F8</color>
+    <color name="type_dark">#FF705848</color>
+    <color name="type_fairy">#FFEE99AC</color>
+    <color name="type_fighting">#FFC03028</color>
+    <color name="type_flying">#FFA890F0</color>
+    <color name="type_poison">#FFA040A0</color>
+    <color name="type_ground">#FFE0C068</color>
+    <color name="type_rock">#FFB8A038</color>
+    <color name="type_bug">#FFA8B820</color>
+    <color name="type_ghost">#FF705898</color>
+    <color name="type_steel">#FFB8B8D0</color>
+    <color name="type_normal">#FFA8A878</color>
 </resources>
