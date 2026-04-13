@@ -37,26 +37,6 @@ class PokemonTypeView @JvmOverloads constructor(
         canvas.drawText(typeName.replaceFirstChar { it.uppercase() }, x, y, textPaint)
     }
 
-    private fun getTypeColor(type: String): Int = when (type.lowercase()) {
-        "grass"    -> "#78C850".toColorInt()
-        "fire"     -> "#F08030".toColorInt()
-        "water"    -> "#6890F0".toColorInt()
-        "electric" -> "#F8D030".toColorInt()
-        "psychic"  -> "#F85888".toColorInt()
-        "ice"      -> "#98D8D8".toColorInt()
-        "dragon"   -> "#7038F8".toColorInt()
-        "dark"     -> "#705848".toColorInt()
-        "fairy"    -> "#EE99AC".toColorInt()
-        "fighting" -> "#C03028".toColorInt()
-        "flying"   -> "#A890F0".toColorInt()
-        "poison"   -> "#A040A0".toColorInt()
-        "ground"   -> "#E0C068".toColorInt()
-        "rock"     -> "#B8A038".toColorInt()
-        "bug"      -> "#A8B820".toColorInt()
-        "ghost"    -> "#705898".toColorInt()
-        "steel"    -> "#B8B8D0".toColorInt()
-        "normal"   -> "#A8A878".toColorInt()
-        "stellar"  -> "#40b5a5".toColorInt()
-        else       -> Color.GRAY
-    }
+    private fun getTypeColor(type: String): Int =
+        PokemonTypeColors.getColor(context, type)
 }
