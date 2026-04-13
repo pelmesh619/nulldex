@@ -6,7 +6,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
-import androidx.core.graphics.toColorInt
+import org.pelmeshke.nulldex.R
+import org.pelmeshke.nulldex.ui.theme.PokemonTypeColors
 
 class PokemonTypeView @JvmOverloads constructor(
     context: Context,
@@ -18,7 +19,7 @@ class PokemonTypeView @JvmOverloads constructor(
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
-        textSize = 36f
+        textSize = R.dimen.text_s.toFloat()
     }
 
     var typeName: String = ""
