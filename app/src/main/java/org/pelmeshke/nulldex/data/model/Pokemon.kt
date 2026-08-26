@@ -16,7 +16,23 @@ data class Pokemon(
 
 data class Sprites(
     @SerializedName("front_default")
-    val frontDefault: String?
+    val frontDefault: String?,
+    val other: OtherSprites? = null
+) {
+    val bestImageUrl: String
+        get() = other?.officialArtwork?.frontDefault
+            ?: frontDefault
+            ?: ""
+}
+
+data class OtherSprites(
+    @SerializedName("official-artwork")
+    val officialArtwork: OfficialArtwork? = null
+)
+
+data class OfficialArtwork(
+    @SerializedName("front_default")
+    val frontDefault: String? = null
 )
 
 data class TypeSlot(
