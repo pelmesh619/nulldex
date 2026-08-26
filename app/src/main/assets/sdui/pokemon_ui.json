@@ -1,0 +1,71 @@
+{
+  "components": [
+    {
+      "id": "sprite",
+      "type": "sprite",
+      "analytics": { "impressionEvent": "pokemon_sprite_impression" }
+    },
+    {
+      "id": "number",
+      "type": "number"
+    },
+    {
+      "id": "title",
+      "type": "title",
+      "action": {
+        "type": "show_toast",
+        "payload": { "message": "Gotta catch 'em all" }
+      }
+    },
+    {
+      "id": "types",
+      "type": "type_badges",
+      "analytics": { "impressionEvent": "pokemon_types_impression" }
+    },
+    {
+      "id": "about",
+      "type": "section",
+      "label": "About"
+    },
+    {
+      "id": "abilities",
+      "type": "abilities",
+      "label": "Abilities",
+      "analytics": {
+        "impressionEvent": "pokemon_abilities_impression",
+        "clickEvent": "pokemon_abilities_toggled"
+      }
+    },
+    {
+      "id": "vitals",
+      "type": "section",
+      "label": "Vitals"
+    },
+    {
+      "id": "height",
+      "type": "stat",
+      "label": "Height"
+    },
+    {
+      "id": "weight",
+      "type": "stat",
+      "label": "Weight"
+    },
+    {
+      "id": "stat_divider_1",
+      "type": "divider"
+    },
+    {
+      "id": "base_experience",
+      "type": "stat",
+      "label": "Base EXP"
+    },
+    {
+      "id": "favorite",
+      "type": "button",
+      "label": "Toggle favorite",
+      "action": { "type": "toggle_favorite" },
+      "analytics": { "clickEvent": "pokemon_favorite_button" }
+    }
+  ]
+}
