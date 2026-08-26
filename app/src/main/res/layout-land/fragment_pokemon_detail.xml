@@ -15,55 +15,12 @@
         app:cardElevation="8dp">
 
         <LinearLayout
-            android:id="@+id/pokemonDetailLayoutLandscape"
+            android:id="@+id/uiContainer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="horizontal"
             android:padding="16dp"
             android:gravity="center_horizontal">
-
-            <ImageView
-                android:id="@+id/ivSprite"
-                android:layout_width="150dp"
-                android:layout_height="150dp" />
-
-
-        <LinearLayout
-            android:id="@+id/pokemonDetailLayout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:padding="16dp"
-            android:gravity="center_horizontal">
-
-            <TextView
-                android:id="@+id/tvName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:layout_marginTop="8dp" />
-
-            <LinearLayout
-                android:id="@+id/typesContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="8dp" />
-
-            <TextView
-                android:id="@+id/tvHeight"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp" />
-
-            <TextView
-                android:id="@+id/tvWeight"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp" />
-
-            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
