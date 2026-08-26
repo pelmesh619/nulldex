@@ -19,6 +19,16 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        val uiBaseUrl = (project.findProperty("uiBaseUrl") as String?)?.trim().orEmpty()
+        val sduiRemoteEnabled = uiBaseUrl.isNotEmpty()
+        val normalizedUiBaseUrl = when {
+            !sduiRemoteEnabled -> "http://127.0.0.1/"
+            uiBaseUrl.endsWith("/") -> uiBaseUrl
+            else -> "$uiBaseUrl/"
+        }
+        buildConfigField("boolean", "SDUI_REMOTE_ENABLED", "$sduiRemoteEnabled")
+        buildConfigField("String", "UI_BASE_URL", "\"$normalizedUiBaseUrl\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -36,6 +46,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
+        buildConfig = true
         compose = true
         viewBinding = true
     }
