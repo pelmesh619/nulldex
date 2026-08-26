@@ -8,7 +8,10 @@ data class Pokemon(
     val height: Int,
     val weight: Int,
     val sprites: Sprites,
-    val types: List<TypeSlot>
+    val types: List<TypeSlot>,
+    val abilities: List<AbilitySlot>,
+    @SerializedName("base_experience")
+    val baseExperience: Int,
 )
 
 data class Sprites(
@@ -21,5 +24,15 @@ data class TypeSlot(
 )
 
 data class Type(
+    val name: String
+)
+
+data class AbilitySlot(
+    val ability: Ability,
+    @SerializedName("is_hidden")
+    val isHidden: Boolean
+)
+
+data class Ability(
     val name: String
 )
