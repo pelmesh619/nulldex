@@ -1,7 +1,9 @@
 package org.pelmeshke.nulldex.ui.view
 
 import android.content.Context
+import android.os.Build
 import android.util.AttributeSet
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.ViewConfiguration
@@ -29,6 +31,7 @@ class PokemonCardView @JvmOverloads constructor(
     private var downRawY = 0f
     private var dragging = false
     private var dismissed = false
+    private var pastDismissThreshold = false
     private var velocityTracker: VelocityTracker? = null
 
     override fun requestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
@@ -44,6 +47,7 @@ class PokemonCardView @JvmOverloads constructor(
                 downRawX = ev.rawX
                 downRawY = ev.rawY
                 dragging = false
+                pastDismissThreshold = false
                 obtainTracker().addMovement(ev)
             }
             MotionEvent.ACTION_MOVE -> {
@@ -52,7 +56,7 @@ class PokemonCardView @JvmOverloads constructor(
                 if (isHorizontalSwipe(dx, ev.rawY - downRawY)) {
                     dragging = true
                     parent?.requestDisallowInterceptTouchEvent(true)
-                    translationX = dx
+                    applyDrag(dx)
                     return true
                 }
             }
@@ -71,6 +75,7 @@ class PokemonCardView @JvmOverloads constructor(
                 downRawX = event.rawX
                 downRawY = event.rawY
                 dragging = false
+                pastDismissThreshold = false
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -81,12 +86,7 @@ class PokemonCardView @JvmOverloads constructor(
                     parent?.requestDisallowInterceptTouchEvent(true)
                 }
                 if (dragging) {
-                    translationX = dx
-                    val progress = (abs(translationX) / (width.coerceAtLeast(1) * 0.5f)).coerceIn(0f, 1f)
-                    alpha = 1f - progress * 0.45f
-                    val scale = 1f - progress * 0.08f
-                    scaleX = scale
-                    scaleY = scale
+                    applyDrag(dx)
                     return true
                 }
             }
@@ -127,9 +127,36 @@ class PokemonCardView @JvmOverloads constructor(
         return abs(dx) > touchSlop && abs(dx) > abs(dy)
     }
 
+    private fun dismissThreshold(): Float = width * 0.28f
+
+    private fun applyDrag(dx: Float) {
+        translationX = dx
+        val progress = (abs(translationX) / (width.coerceAtLeast(1) * 0.5f)).coerceIn(0f, 1f)
+        alpha = 1f - progress * 0.45f
+        val scale = 1f - progress * 0.08f
+        scaleX = scale
+        scaleY = scale
+
+        val crossed = abs(translationX) > dismissThreshold()
+        if (crossed && !pastDismissThreshold) {
+            performThresholdHaptic()
+        }
+        pastDismissThreshold = crossed
+    }
+
+    private fun performThresholdHaptic() {
+        isHapticFeedbackEnabled = true
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE
+        } else {
+            HapticFeedbackConstants.CLOCK_TICK
+        }
+        performHapticFeedback(type)
+    }
+
     private fun settleOrDismiss() {
         val vx = lastVelocityX
-        val threshold = width * 0.28f
+        val threshold = dismissThreshold()
         val flung = abs(vx) >= minFlingVelocity * 1.5f && sameSign(vx, translationX)
         if (abs(translationX) > threshold || flung) {
             dismissOffscreen(if (translationX >= 0f) 1 else -1)
