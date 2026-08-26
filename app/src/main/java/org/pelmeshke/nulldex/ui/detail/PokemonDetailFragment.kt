@@ -12,17 +12,16 @@ import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.navArgs
-import com.bumptech.glide.Glide
 import org.pelmeshke.nulldex.data.local.FavoritesManager
 import org.pelmeshke.nulldex.R
+import org.pelmeshke.nulldex.data.model.PokemonUIMapper
 import org.pelmeshke.nulldex.databinding.FragmentPokemonDetailBinding
-import org.pelmeshke.nulldex.ui.view.PokemonTypeView
 
 class PokemonDetailFragment() : Fragment() {
     private var _binding: FragmentPokemonDetailBinding? = null
@@ -31,7 +30,10 @@ class PokemonDetailFragment() : Fragment() {
     private val viewModel: PokemonDetailViewModel by viewModels()
     private val args: PokemonDetailFragmentArgs by navArgs()
 
+    private lateinit var renderer: PokemonUIRenderer
+    private val analyticsTracker = ServerAnalyticsTracker()
     private lateinit var favoritesManager: FavoritesManager
+    private var pokemonName: String = ""
 
     private val isTwoPane by lazy { arguments?.getBoolean("isTwoPane") ?: false }
 
@@ -39,7 +41,6 @@ class PokemonDetailFragment() : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
         _binding = FragmentPokemonDetailBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -52,48 +53,49 @@ class PokemonDetailFragment() : Fragment() {
         } catch (_: Exception) {
             arguments?.getString("pokemonName") ?: return
         }
-        viewModel.loadPokemon(pokemonName)
+        renderer = PokemonUIRenderer(
+            container = binding.uiContainer,
+            actionHandler = PokemonActionHandler { componentId, action ->
+                handleComponentAction(componentId, action)
+            },
+            analyticsTracker = analyticsTracker
+        )
         favoritesManager = FavoritesManager(requireContext())
+        this.pokemonName = pokemonName
+
+        analyticsTracker.track("pokemon_detail_screen_impression", mapOf("pokemon_name" to pokemonName))
+
+        viewModel.loadPokemon(pokemonName)
+        viewModel.loadUIConfig()
 
         addActionBarIcons(pokemonName)
 
         viewModel.pokemon.observe(viewLifecycleOwner) { pokemon ->
-            binding.tvName.text = pokemon.name.replaceFirstChar { it.uppercase() }
+            val config = viewModel.uiConfig.value ?: return@observe
+            val uiModel = PokemonUIMapper.map(pokemon, config, requireContext())
+            renderer.render(uiModel)
+        }
 
-            binding.typesContainer.removeAllViews()
-            pokemon.types.forEach { typeSlot ->
-                val typeView = PokemonTypeView(requireContext()).apply {
-                    typeName = typeSlot.type.name
-                    layoutParams = LinearLayout.LayoutParams(200, 60).apply {
-                        marginEnd = 8
-                    }
-                }
-                binding.typesContainer.addView(typeView)
-            }
-            binding.tvHeight.text = "Height: ${pokemon.height / 10.0} m"
-            binding.tvWeight.text = "Weight: ${pokemon.weight / 10.0} kg"
-
-            binding.ivSprite.let {
-                Glide.with(this)
-                    .load(pokemon.sprites.frontDefault)
-                    .into(it)
-            }
+        viewModel.uiConfig.observe(viewLifecycleOwner) { config ->
+            val pokemon = viewModel.pokemon.value ?: return@observe
+            val uiModel = PokemonUIMapper.map(pokemon, config, requireContext())
+            renderer.render(uiModel)
         }
 
         viewModel.error.observe(viewLifecycleOwner) { error ->
             if (error != null) {
                 binding.errorLayout.isVisible = true
-                binding.pokemonDetailLayout.isVisible = false
+                binding.uiContainer.isVisible = false
                 binding.tvError.text = error
                 binding.btnRetry.setOnClickListener {
                     binding.errorLayout.isVisible = false
-                    binding.pokemonDetailLayout.isVisible = true
+                    binding.uiContainer.isVisible = true
                     viewModel.clearError()
                     viewModel.loadPokemon(pokemonName)
                 }
             } else {
                 binding.errorLayout.isVisible = false
-                binding.pokemonDetailLayout.isVisible = true
+                binding.uiContainer.isVisible = true
             }
         }
 
@@ -162,6 +164,10 @@ class PokemonDetailFragment() : Fragment() {
                                 .setDuration(20)
                                 .withEndAction {
                                     try {
+                                        analyticsTracker.track(
+                                            "pokemon_detail_swipe_dismiss",
+                                            mapOf("pokemon_name" to pokemonName)
+                                        )
                                         if (isTwoPane) {
                                             parentFragment?.childFragmentManager?.beginTransaction()?.remove(this@PokemonDetailFragment)?.commit()
                                         } else {
@@ -221,9 +227,17 @@ class PokemonDetailFragment() : Fragment() {
                     R.id.action_favorite -> {
                         if (favoritesManager.isFavorite(pokemonName)) {
                             favoritesManager.remove(pokemonName)
+                            analyticsTracker.track(
+                                "favorite_removed",
+                                mapOf("pokemon_name" to pokemonName, "source" to "action_bar")
+                            )
                         } else {
                             viewModel.pokemon.observe(viewLifecycleOwner) { pokemon ->
                                 favoritesManager.add(pokemonName, pokemon.id.toString())
+                                analyticsTracker.track(
+                                    "favorite_added",
+                                    mapOf("pokemon_name" to pokemonName, "source" to "action_bar")
+                                )
                             }
                         }
                         requireActivity().invalidateOptionsMenu()
@@ -247,6 +261,53 @@ class PokemonDetailFragment() : Fragment() {
 
     private fun isLandscape(): Boolean {
         return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    }
+
+    private fun handleComponentAction(componentId: String, action: org.pelmeshke.nulldex.data.model.UIActionConfig) {
+        when (action.type) {
+            "show_toast" -> {
+                val message = action.payload["message"] ?: componentId
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                analyticsTracker.track(
+                    "component_action_executed",
+                    mapOf(
+                        "component_id" to componentId,
+                        "action_type" to action.type,
+                        "pokemon_name" to pokemonName
+                    )
+                )
+            }
+
+            "toggle_favorite" -> {
+                if (favoritesManager.isFavorite(pokemonName)) {
+                    favoritesManager.remove(pokemonName)
+                    analyticsTracker.track(
+                        "favorite_removed",
+                        mapOf("pokemon_name" to pokemonName, "source" to componentId)
+                    )
+                } else {
+                    viewModel.pokemon.value?.let { pokemon ->
+                        favoritesManager.add(pokemonName, pokemon.id.toString())
+                        analyticsTracker.track(
+                            "favorite_added",
+                            mapOf("pokemon_name" to pokemonName, "source" to componentId)
+                        )
+                    }
+                }
+                requireActivity().invalidateOptionsMenu()
+            }
+
+            else -> {
+                analyticsTracker.track(
+                    "component_action_ignored",
+                    mapOf(
+                        "component_id" to componentId,
+                        "action_type" to action.type,
+                        "pokemon_name" to pokemonName
+                    )
+                )
+            }
+        }
     }
 
     override fun onDestroyView() {
