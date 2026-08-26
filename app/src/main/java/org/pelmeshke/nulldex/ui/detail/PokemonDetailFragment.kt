@@ -4,12 +4,10 @@ import android.app.Activity.OVERRIDE_TRANSITION_CLOSE
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -22,6 +20,7 @@ import org.pelmeshke.nulldex.data.local.FavoritesManager
 import org.pelmeshke.nulldex.R
 import org.pelmeshke.nulldex.data.model.PokemonUIMapper
 import org.pelmeshke.nulldex.databinding.FragmentPokemonDetailBinding
+import org.pelmeshke.nulldex.ui.view.PokemonCardView
 
 class PokemonDetailFragment() : Fragment() {
     private var _binding: FragmentPokemonDetailBinding? = null
@@ -31,7 +30,7 @@ class PokemonDetailFragment() : Fragment() {
     private val args: PokemonDetailFragmentArgs by navArgs()
 
     private lateinit var renderer: PokemonUIRenderer
-    private val analyticsTracker = ServerAnalyticsTracker()
+    private val analyticsTracker = AnalyticsTrackers.create()
     private lateinit var favoritesManager: FavoritesManager
     private var pokemonName: String = ""
 
@@ -99,109 +98,34 @@ class PokemonDetailFragment() : Fragment() {
             }
         }
 
-        val swipeView = binding.cardView
-        Log.i("SWIPE_TEST","swipeView present")
+        binding.cardView.swipeDismissListener =
+            PokemonCardView.SwipeDismissListener { dismissCard() }
+    }
 
-        val gesture = android.view.GestureDetector(requireContext(), object : android.view.GestureDetector.SimpleOnGestureListener() {
-            override fun onDown(e: MotionEvent) = true
-            override fun onScroll(
-                e1: MotionEvent?,
-                e2: MotionEvent,
-                distanceX: Float,
-                distanceY: Float
-            ): Boolean {
-                if (kotlin.math.abs(distanceX) > kotlin.math.abs(distanceY) * 2) return true
-                return false
-            }
-        })
-
-        swipeView.setOnTouchListener(object : View.OnTouchListener {
-            private var isDragging: Boolean = false
-            private var initialTranslateX: Float = 0.0F
-            private var initialTouchX: Float = 0.0F
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                Log.i(
-                    "SWIPE_TEST",
-                    "card touch: ${event.actionMasked} x=${event.rawX} y=${event.rawY}"
-                )
-                gesture.onTouchEvent(event)
-                v.performClick()
-
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        initialTouchX = event.rawX
-                        initialTranslateX = v.translationX
-                        isDragging = true
-                        return true
-                    }
-
-                    MotionEvent.ACTION_MOVE -> {
-                        if (!isDragging)
-                            return false
-
-                        val dx = event.rawX - initialTouchX
-                        if (kotlin.math.abs(dx) < 8) return true
-                        v.translationX = initialTranslateX + dx
-                        val progress =
-                            (kotlin.math.abs(v.translationX) / (v.width * 0.5f)).coerceIn(0f, 1f)
-                        v.alpha = 1f - progress * 0.5f
-                        v.scaleX = 1f - progress * 0.2f
-                        v.scaleY = 1f - progress * 0.2f
-                        return true
-                    }
-
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        if (!isDragging) return false
-                        isDragging = false
-                        val currentX = v.translationX
-                        val threshold = v.width * 0.4f
-                        if (kotlin.math.abs(currentX) > threshold) {
-                            val dir = if (currentX > 0) 1 else -1
-                            val target = dir * v.width * 1.2f
-                            v.animate().translationX(target)
-                                .alpha(0f)
-                                .setDuration(20)
-                                .withEndAction {
-                                    try {
-                                        analyticsTracker.track(
-                                            "pokemon_detail_swipe_dismiss",
-                                            mapOf("pokemon_name" to pokemonName)
-                                        )
-                                        if (isTwoPane) {
-                                            parentFragment?.childFragmentManager?.beginTransaction()?.remove(this@PokemonDetailFragment)?.commit()
-                                        } else {
-                                            requireActivity().finish()
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                requireActivity().overrideActivityTransition(
-                                                    OVERRIDE_TRANSITION_CLOSE,
-                                                    0, R.anim.fade_out_short
-                                                )
-                                            } else {
-                                                requireActivity().overridePendingTransition(
-                                                    0, R.anim.fade_out_short
-                                                )
-                                            }
-                                        }
-                                    } catch (e: IllegalStateException) {
-                                        Log.e("SWIPE_BACK", e.toString())
-                                    }
-                                }
-                                .start()
-                        } else {
-                            v.animate()
-                                .translationX(0f)
-                                .alpha(1f)
-                                .scaleX(1f)
-                                .scaleY(1f)
-                                .setDuration(20).start()
-                        }
-                        return true
-                    }
-                }
-                return false
-            }
-        })
+    private fun dismissCard() {
+        if (!isAdded) return
+        analyticsTracker.track(
+            "pokemon_detail_swipe_dismiss",
+            mapOf("pokemon_name" to pokemonName)
+        )
+        if (isTwoPane) {
+            parentFragment?.childFragmentManager
+                ?.beginTransaction()
+                ?.remove(this)
+                ?.commit()
+            return
+        }
+        requireActivity().finish()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            requireActivity().overrideActivityTransition(
+                OVERRIDE_TRANSITION_CLOSE,
+                0,
+                R.anim.fade_out_short
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            requireActivity().overridePendingTransition(0, R.anim.fade_out_short)
+        }
     }
 
     companion object {
@@ -266,7 +190,7 @@ class PokemonDetailFragment() : Fragment() {
     private fun handleComponentAction(componentId: String, action: org.pelmeshke.nulldex.data.model.UIActionConfig) {
         when (action.type) {
             "show_toast" -> {
-                val message = action.payload["message"] ?: componentId
+                val message = action.payloadOrEmpty()["message"] ?: componentId
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
                 analyticsTracker.track(
                     "component_action_executed",
@@ -311,6 +235,7 @@ class PokemonDetailFragment() : Fragment() {
     }
 
     override fun onDestroyView() {
+        binding.cardView.swipeDismissListener = null
         binding.cardView.animate()?.cancel()
         super.onDestroyView()
         _binding = null
