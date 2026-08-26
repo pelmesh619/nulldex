@@ -1,279 +1,326 @@
 package org.pelmeshke.nulldex.ui.detail
 
-import android.graphics.Color
-import android.graphics.Typeface
-import android.view.Gravity
+import android.content.res.Configuration
+import android.graphics.drawable.GradientDrawable
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
+import androidx.core.widget.NestedScrollView
 import com.bumptech.glide.Glide
 import org.pelmeshke.nulldex.R
 import org.pelmeshke.nulldex.data.model.PokemonUIComponent
 import org.pelmeshke.nulldex.data.model.PokemonUIModel
 import org.pelmeshke.nulldex.ui.view.PokemonTypeView
-import androidx.core.graphics.toColorInt
 
 class PokemonUIRenderer(
     private val container: LinearLayout,
     private val actionHandler: PokemonActionHandler,
     private val analyticsTracker: AnalyticsTracker
 ) {
+    private val context = container.context
+    private val inflater = LayoutInflater.from(context)
+    private var appearIndex = 0
 
     fun render(model: PokemonUIModel) {
         container.removeAllViews()
+        appearIndex = 0
+
+        val landscape = context.resources.configuration.orientation ==
+            Configuration.ORIENTATION_LANDSCAPE
+        container.orientation = if (landscape) {
+            LinearLayout.HORIZONTAL
+        } else {
+            LinearLayout.VERTICAL
+        }
         container.setBackgroundColor(model.primaryColor)
 
-        model.components.forEach { component ->
-            val view = when (component) {
-                is PokemonUIComponent.Sprite   -> renderSprite(component)
-                is PokemonUIComponent.Title    -> renderTitle(component)
-                is PokemonUIComponent.Number   -> renderNumber(component)
-                is PokemonUIComponent.TypeBadges -> renderTypeBadges(component)
-                is PokemonUIComponent.Abilities -> renderAbilities(component)
-                is PokemonUIComponent.Stat     -> renderStat(component)
-                is PokemonUIComponent.Divider  -> renderDivider()
+        val hero = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            background = heroGradient(model.primaryColor)
+        }
+        val sheet = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = ContextCompat.getDrawable(
+                context,
+                if (landscape) R.drawable.bg_sdui_sheet_land else R.drawable.bg_sdui_sheet
+            )
+            val pad = resources.getDimensionPixelSize(R.dimen.spacing_l)
+            setPadding(pad, pad, pad, pad)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                if (landscape) {
+                    width = 0
+                    height = LinearLayout.LayoutParams.MATCH_PARENT
+                    weight = 1f
+                } else {
+                    topMargin = -resources.getDimensionPixelSize(R.dimen.spacing_l)
+                }
             }
-            bindInteractions(view, component)
-            container.addView(view)
+        }
+
+        val components = model.components
+        var index = 0
+        while (index < components.size) {
+            val first = components[index]
+            if (first is PokemonUIComponent.Stat) {
+                val stats = mutableListOf<PokemonUIComponent.Stat>()
+                while (index < components.size && components[index] is PokemonUIComponent.Stat) {
+                    stats += components[index] as PokemonUIComponent.Stat
+                    index++
+                }
+                val row = renderStatRow(stats)
+                sheet.addView(row)
+                appear(row)
+                continue
+            }
+
+            val view = renderComponent(first, model.primaryColor)
+            bindInteractions(view, first)
+            if (isHero(first)) {
+                hero.addView(view)
+            } else {
+                sheet.addView(view)
+            }
+            appear(view)
+            index++
+        }
+
+        if (landscape) {
+            hero.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            hero.gravity = android.view.Gravity.CENTER
+            container.addView(scrollOf(hero, matchParent = true, weight = 1f))
+            container.addView(scrollOf(sheet, matchParent = true, weight = 1f))
+        } else {
+            val column = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                addView(hero)
+                addView(renderComponent(PokemonUIComponent.Divider("hero_sheet_divider"), model.primaryColor))
+                addView(sheet)
+            }
+            container.addView(scrollOf(column, matchParent = true, weight = 0f))
+//            container.addView(hero)
+//            container.addView(renderComponent(PokemonUIComponent.Divider("hero_sheet_divider"), model.primaryColor))
+//            container.addView(sheet)
         }
     }
 
+    private fun isHero(component: PokemonUIComponent): Boolean = when (component) {
+        is PokemonUIComponent.Sprite,
+        is PokemonUIComponent.Number,
+        is PokemonUIComponent.Title,
+        is PokemonUIComponent.TypeBadges -> true
+        else -> false
+    }
+
+    private fun renderComponent(
+        component: PokemonUIComponent,
+        primaryColor: Int
+    ): View = when (component) {
+        is PokemonUIComponent.Sprite -> renderSprite(component)
+        is PokemonUIComponent.Title -> renderTitle(component)
+        is PokemonUIComponent.Number -> renderNumber(component)
+        is PokemonUIComponent.TypeBadges -> renderTypeBadges(component)
+        is PokemonUIComponent.Abilities -> renderAbilities(component)
+        is PokemonUIComponent.Stat -> renderStat(component)
+        is PokemonUIComponent.Divider -> inflater.inflate(R.layout.sdui_divider, container, false)
+        is PokemonUIComponent.Section -> renderSection(component)
+        is PokemonUIComponent.Button -> renderButton(component, primaryColor)
+    }
+
     private fun bindInteractions(view: View, component: PokemonUIComponent) {
-        val analytics = component.analyticsOrNull()
-        analytics?.impressionEvent?.let { event ->
+        component.analytics?.impressionEvent?.let { event ->
             analyticsTracker.track(
                 event,
-                analytics.params + mapOf("component_id" to component.componentId())
+                component.analytics?.params.orEmpty() + mapOf("component_id" to component.id)
             )
         }
 
-        val action = component.actionOrNull()
+        if (component is PokemonUIComponent.Abilities) {
+            return
+        }
+
+        val action = component.action
         if (action != null) {
             view.isClickable = true
             view.isFocusable = true
             view.setOnClickListener {
-                analytics?.clickEvent?.let { event ->
-                    analyticsTracker.track(
-                        event,
-                        analytics.params + mapOf("component_id" to component.componentId())
-                    )
-                }
-                actionHandler.handle(component.componentId(), action)
+                trackClick(component)
+                actionHandler.handle(component.id, action)
             }
         } else {
             view.setOnClickListener(null)
         }
     }
 
-    private fun renderSprite(component: PokemonUIComponent.Sprite): View {
-        return ImageView(container.context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                container.context.resources.getDimensionPixelSize(R.dimen.sprite_detail),
-                container.context.resources.getDimensionPixelSize(R.dimen.sprite_detail)
-            ).also { it.gravity = Gravity.CENTER_HORIZONTAL }
-            Glide.with(this).load(component.url).into(this)
+    private fun trackClick(component: PokemonUIComponent) {
+        component.analytics?.clickEvent?.let { event ->
+            analyticsTracker.track(
+                event,
+                component.analytics?.params.orEmpty() + mapOf("component_id" to component.id)
+            )
         }
+    }
+
+    private fun renderSprite(component: PokemonUIComponent.Sprite): View {
+        val view = inflater.inflate(R.layout.sdui_sprite, container, false)
+        val image = view.findViewById<ImageView>(R.id.spriteImage)
+        Glide.with(image)
+            .load(component.url)
+            .into(image)
+        return view
     }
 
     private fun renderTitle(component: PokemonUIComponent.Title): View {
-        return TextView(container.context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            text = component.text
-            textSize = 28f
-            setTypeface(typeface, Typeface.BOLD)
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            val p = container.context.resources.getDimensionPixelSize(R.dimen.spacing_s)
-            setPadding(p, p, p, p)
-        }
+        val view = inflater.inflate(R.layout.sdui_title, container, false) as TextView
+        view.text = component.text
+        return view
     }
 
     private fun renderNumber(component: PokemonUIComponent.Number): View {
-        return TextView(container.context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            text = component.text
-            textSize = 14f
-            setTextColor("#CCFFFFFF".toColorInt())
-            gravity = Gravity.CENTER
-        }
+        val view = inflater.inflate(R.layout.sdui_number, container, false) as TextView
+        view.text = component.text
+        return view
     }
 
     private fun renderTypeBadges(component: PokemonUIComponent.TypeBadges): View {
-        return LinearLayout(container.context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).also { it.gravity = Gravity.CENTER_HORIZONTAL }
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-
-            component.types.forEach { type ->
-                addView(PokemonTypeView(context).apply {
-                    typeName = type
-                    layoutParams = LinearLayout.LayoutParams(200, 60).apply {
-                        marginEnd = 8
-                    }
-                })
-            }
-        }
-    }
-
-    private fun renderStat(component: PokemonUIComponent.Stat): View {
-        return LinearLayout(container.context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayout.HORIZONTAL
-            val p = container.context.resources.getDimensionPixelSize(R.dimen.spacing_m)
-            setPadding(p, p / 2, p, p / 2)
-
-            addView(TextView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                text = component.label
-                textSize = 16f
-                setTextColor(Color.WHITE)
-            })
-            addView(TextView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                text = component.value
-                textSize = 16f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
+        val row = inflater.inflate(R.layout.sdui_types, container, false) as LinearLayout
+        val height = context.resources.getDimensionPixelSize(R.dimen.type_badge_height)
+        val gap = context.resources.getDimensionPixelSize(R.dimen.spacing_s)
+        component.types.forEachIndexed { index, type ->
+                row.addView(PokemonTypeView(context).apply {
+                typeName = type
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    height
+                ).apply {
+                    if (index > 0) marginStart = gap
+                }
             })
         }
+        return row
     }
 
-    private fun renderDivider(): View {
-        return View(container.context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 1
-            ).also {
-                val m = container.context.resources.getDimensionPixelSize(R.dimen.spacing_m)
-                it.setMargins(m, m / 2, m, m / 2)
+    private fun renderSection(component: PokemonUIComponent.Section): View {
+        val view = inflater.inflate(R.layout.sdui_section, container, false) as TextView
+        view.text = component.title
+        return view
+    }
+
+    private fun renderStatRow(stats: List<PokemonUIComponent.Stat>): View {
+        val row = inflater.inflate(R.layout.sdui_stat_row, container, false) as LinearLayout
+        val gap = context.resources.getDimensionPixelSize(R.dimen.spacing_s)
+        stats.forEachIndexed { index, stat ->
+            val card = renderStat(stat, row)
+            card.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                if (index > 0) marginStart = gap
             }
-            setBackgroundColor("#33FFFFFF".toColorInt())
+            bindInteractions(card, stat)
+            row.addView(card)
         }
+        return row
+    }
+
+    private fun renderStat(component: PokemonUIComponent.Stat, parent: ViewGroup = container): View {
+        val view = inflater.inflate(R.layout.sdui_stat, parent, false)
+        view.findViewById<TextView>(R.id.statValue).text = component.value
+        view.findViewById<TextView>(R.id.statLabel).text = component.label
+        return view
     }
 
     private fun renderAbilities(component: PokemonUIComponent.Abilities): View {
-        val horizontalPadding = container.context.resources.getDimensionPixelSize(R.dimen.spacing_m)
-        val verticalPadding = container.context.resources.getDimensionPixelSize(R.dimen.spacing_s)
-        val itemSpacing = container.context.resources.getDimensionPixelSize(R.dimen.spacing_xs)
+        val view = inflater.inflate(R.layout.sdui_abilities, container, false)
+        view.findViewById<TextView>(R.id.abilitiesTitle).text = component.title
+        val toggle = view.findViewById<TextView>(R.id.abilitiesToggle)
+        val list = view.findViewById<LinearLayout>(R.id.abilitiesList)
+        val header = view.findViewById<View>(R.id.abilitiesHeader)
 
-        return LinearLayout(container.context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayout.VERTICAL
-            setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+        component.abilities.forEach { ability ->
+            val chip = inflater.inflate(R.layout.sdui_ability_chip, list, false) as TextView
+            chip.text = ability
+            list.addView(chip)
+        }
 
-            val listContainer = LinearLayout(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
+        header.setOnClickListener {
+            val expanded = list.visibility == View.VISIBLE
+            list.visibility = if (expanded) View.GONE else View.VISIBLE
+            toggle.setText(if (expanded) R.string.sdui_show else R.string.sdui_hide)
+            trackClick(component)
+            component.action?.let { actionHandler.handle(component.id, it) }
+        }
+        return view
+    }
+
+    private fun renderButton(component: PokemonUIComponent.Button, primaryColor: Int): View {
+        val view = inflater.inflate(R.layout.sdui_button, container, false) as TextView
+        view.text = component.label
+        val background = ContextCompat.getDrawable(context, R.drawable.bg_sdui_button)
+            ?.mutate() as? GradientDrawable
+        background?.setColor(primaryColor)
+        view.background = background
+        val params = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        params.topMargin = context.resources.getDimensionPixelSize(R.dimen.spacing_s)
+        view.layoutParams = params
+        return view
+    }
+
+    private fun heroGradient(primaryColor: Int): GradientDrawable {
+        val top = ColorUtils.blendARGB(primaryColor, android.graphics.Color.BLACK, 0.18f)
+        return GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(top, primaryColor)
+        )
+    }
+
+    private fun scrollOf(child: View, matchParent: Boolean, weight: Float): NestedScrollView {
+        return NestedScrollView(context).apply {
+            isFillViewport = true
+            layoutParams = if (weight > 0f) {
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, weight)
+            } else {
+                LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
+                    LinearLayout.LayoutParams.MATCH_PARENT
                 )
-                orientation = LinearLayout.VERTICAL
-                visibility = View.GONE
             }
-
-            val toggleLabel = TextView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                text = "Show"
-                textSize = 14f
-                setTextColor("#CCFFFFFF".toColorInt())
-            }
-
-            addView(LinearLayout(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                isClickable = true
-                isFocusable = true
-                setOnClickListener {
-                    val isExpanded = listContainer.visibility == View.VISIBLE
-                    listContainer.visibility = if (isExpanded) View.GONE else View.VISIBLE
-                    toggleLabel.text = if (isExpanded) "Show" else "Hide"
+            val childParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                if (matchParent && weight > 0f) {
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                } else {
+                    ViewGroup.LayoutParams.WRAP_CONTENT
                 }
-
-                addView(TextView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f
-                    )
-                    text = component.title
-                    textSize = 16f
-                    setTypeface(typeface, Typeface.BOLD)
-                    setTextColor(Color.WHITE)
-                })
-
-                addView(toggleLabel)
-            })
-
-            component.abilities.forEachIndexed { index, ability ->
-                listContainer.addView(TextView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        if (index == 0) {
-                            topMargin = container.context.resources.getDimensionPixelSize(R.dimen.spacing_s)
-                        } else {
-                            topMargin = itemSpacing
-                        }
-                    }
-                    text = "\u2022 $ability"
-                    textSize = 15f
-                    setTextColor("#F2FFFFFF".toColorInt())
-                })
-            }
-
-            addView(listContainer)
+            )
+            addView(child, childParams)
         }
     }
 
-    private fun PokemonUIComponent.componentId(): String = when (this) {
-        is PokemonUIComponent.Sprite -> id
-        is PokemonUIComponent.Title -> id
-        is PokemonUIComponent.Number -> id
-        is PokemonUIComponent.TypeBadges -> id
-        is PokemonUIComponent.Abilities -> id
-        is PokemonUIComponent.Stat -> id
-        is PokemonUIComponent.Divider -> id
-    }
-
-    private fun PokemonUIComponent.actionOrNull() = when (this) {
-        is PokemonUIComponent.Sprite -> action
-        is PokemonUIComponent.Title -> action
-        is PokemonUIComponent.Number -> action
-        is PokemonUIComponent.TypeBadges -> action
-        is PokemonUIComponent.Abilities -> action
-        is PokemonUIComponent.Stat -> action
-        is PokemonUIComponent.Divider -> null
-    }
-
-    private fun PokemonUIComponent.analyticsOrNull() = when (this) {
-        is PokemonUIComponent.Sprite -> analytics
-        is PokemonUIComponent.Title -> analytics
-        is PokemonUIComponent.Number -> analytics
-        is PokemonUIComponent.TypeBadges -> analytics
-        is PokemonUIComponent.Abilities -> analytics
-        is PokemonUIComponent.Stat -> analytics
-        is PokemonUIComponent.Divider -> analytics
+    private fun appear(view: View) {
+        val offset = context.resources.getDimensionPixelSize(R.dimen.spacing_m).toFloat()
+        view.alpha = 0f
+        view.translationY = offset
+        view.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setStartDelay(35L * appearIndex)
+            .setDuration(320)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        appearIndex++
     }
 }
