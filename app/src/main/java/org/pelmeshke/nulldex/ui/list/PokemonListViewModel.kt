@@ -71,8 +71,8 @@ class PokemonListViewModel : ViewModel() {
     private suspend fun loadAllPokemonsSuspending() {
         _isLoading.value = true
         try {
-            delay(7000)
-            val result = repository.getPokemonList(limit = 100000, offset = 0)
+            // delay(7000)
+            val result = repository.getPokemonList(limit = 100000, offset = 0, forceRefresh = true)
             allPokemons = result.results
             _error.value = null
         } catch (e: HttpException) {
