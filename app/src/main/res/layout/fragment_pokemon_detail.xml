@@ -11,17 +11,17 @@
         android:layout_margin="16dp"
         android:clickable="true"
         android:focusable="true"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="8dp">
+        android:clipToOutline="true"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="10dp">
 
-            <LinearLayout
-                android:id="@+id/uiContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:gravity="center_horizontal">
-            </LinearLayout>
+        <LinearLayout
+            android:id="@+id/uiContainer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:clickable="false"
+            android:focusable="false"/>
 
         <LinearLayout
             android:id="@+id/errorLayout"
