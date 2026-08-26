@@ -16,10 +16,18 @@ class PokemonTypeView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
-        textSize = R.dimen.text_s.toFloat()
+        textSize = 36f
+    }
+
+    init {
+        borderPaint.color = resources.getColor(R.color.gray_primary)
+        borderPaint.style = Paint.Style.STROKE
+        borderPaint.strokeWidth = 4f
     }
 
     var typeName: String = ""
@@ -33,8 +41,18 @@ class PokemonTypeView @JvmOverloads constructor(
         super.onDraw(canvas)
         val radius = height / 2f
         canvas.drawRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, paint)
+        canvas.drawRoundRect(
+            borderPaint.strokeWidth / 2,
+            borderPaint.strokeWidth / 2,
+            width.toFloat() - borderPaint.strokeWidth / 2,
+            height.toFloat() - borderPaint.strokeWidth / 2,
+            radius,
+            radius,
+            borderPaint
+        )
         val x = width / 2f
         val y = height / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+        canvas.drawText(typeName.replaceFirstChar { it.uppercase() }, x, y, textPaint)
         canvas.drawText(typeName.replaceFirstChar { it.uppercase() }, x, y, textPaint)
     }
 
