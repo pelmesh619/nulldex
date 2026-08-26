@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">NullDex</string>
+    <string name="sdui_show">Show</string>
+    <string name="sdui_hide">Hide</string>
 </resources>
