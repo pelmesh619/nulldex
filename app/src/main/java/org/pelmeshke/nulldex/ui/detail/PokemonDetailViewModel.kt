@@ -1,22 +1,22 @@
 package org.pelmeshke.nulldex.ui.detail
 
+import android.app.Application
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import org.pelmeshke.nulldex.data.model.Pokemon
 import org.pelmeshke.nulldex.data.model.PokemonUIConfig
-import org.pelmeshke.nulldex.data.model.UIActionConfig
-import org.pelmeshke.nulldex.data.model.UIAnalyticsConfig
-import org.pelmeshke.nulldex.data.model.UIComponentConfig
 import org.pelmeshke.nulldex.data.repository.PokemonRepository
+import org.pelmeshke.nulldex.data.sdui.UIConfigStore
 import retrofit2.HttpException
 import java.io.IOException
 
-class PokemonDetailViewModel : ViewModel() {
+class PokemonDetailViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PokemonRepository()
+    private val uiConfigStore = UIConfigStore(application)
 
     private val _pokemon = MutableLiveData<Pokemon>()
     val pokemon: LiveData<Pokemon> = _pokemon
@@ -33,12 +33,13 @@ class PokemonDetailViewModel : ViewModel() {
                 _pokemon.value = repository.getPokemon(name)
             } catch (e: HttpException) {
                 _error.value = "Server error: ${e.code()}"
-                Log.e(null, e.toString())
+                Log.e(TAG, e.toString())
             } catch (e: IOException) {
                 _error.value = "No connection"
-                Log.e(null, e.toString())
+                Log.e(TAG, e.toString())
             } catch (e: Exception) {
                 _error.value = "Other error"
+                Log.e(TAG, e.toString())
             }
         }
     }
@@ -46,65 +47,19 @@ class PokemonDetailViewModel : ViewModel() {
     fun loadUIConfig() {
         viewModelScope.launch {
             try {
-                _uiConfig.value = repository.getPokemonUIConfig()
+                _uiConfig.value = uiConfigStore.load()
             } catch (e: Exception) {
-                Log.e("SDUI", "Error while loading UI config: ${e.toString()}")
-                _uiConfig.value = defaultUIConfig()
+                Log.e(TAG, "Failed to load SDUI config", e)
+                _uiConfig.value = PokemonUIConfig(emptyList())
             }
         }
     }
 
-    private fun defaultUIConfig() = PokemonUIConfig(
-        components = listOf(
-            UIComponentConfig(
-                id = "sprite",
-                type = "sprite",
-                analytics = UIAnalyticsConfig(impressionEvent = "pokemon_sprite_impression")
-            ),
-            UIComponentConfig(
-                id = "number",
-                type = "number",
-                analytics = UIAnalyticsConfig(impressionEvent = "pokemon_number_impression")
-            ),
-            UIComponentConfig(
-                id = "title",
-                type = "title",
-                action = UIActionConfig("show_toast", mapOf("message" to "Pokemon title tapped")),
-            ),
-            UIComponentConfig(
-                id = "types",
-                type = "type_badges",
-                analytics = UIAnalyticsConfig(impressionEvent = "pokemon_types_impression")
-            ),
-            UIComponentConfig(
-                id = "divider",
-                type = "divider"
-            ),
-            UIComponentConfig(
-                id = "height",
-                type = "stat",
-                label = "Height",
-                analytics = UIAnalyticsConfig(impressionEvent = "pokemon_height_impression")
-            ),
-            UIComponentConfig(
-                id = "weight",
-                type = "stat",
-                label = "Weight",
-                analytics = UIAnalyticsConfig(impressionEvent = "pokemon_weight_impression")
-            ),
-            UIComponentConfig(
-                id = "base_experience",
-                type = "stat",
-                label = "Base experience",
-                action = UIActionConfig("show_toast", mapOf("message" to "Base experience tapped")),
-                analytics = UIAnalyticsConfig(
-                    impressionEvent = "pokemon_base_experience_impression"
-                )
-            ),
-        )
-    )
-
     fun clearError() {
         _error.value = null
+    }
+
+    companion object {
+        private const val TAG = "SDUI"
     }
 }
