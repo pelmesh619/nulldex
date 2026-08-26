@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/actionButton"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_sdui_button"
+    android:gravity="center"
+    android:paddingVertical="@dimen/spacing_m"
+    android:textAllCaps="false"
+    android:textColor="@color/white"
+    android:textSize="@dimen/text_m"
+    android:textStyle="bold" />

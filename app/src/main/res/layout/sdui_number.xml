@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/numberText"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:letterSpacing="0.18"
+    android:paddingTop="@dimen/spacing_s"
+    android:textAllCaps="true"
+    android:textColor="@color/sdui_on_hero_muted"
+    android:textSize="@dimen/text_s"
+    android:textStyle="bold" />
