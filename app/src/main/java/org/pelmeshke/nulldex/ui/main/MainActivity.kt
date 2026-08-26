@@ -37,9 +37,9 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, FavoriteActivity::class.java))
         }
 
-        binding.fabRefreshPokemonList.setOnClickListener {
-            viewModel.refresh()
-        }
+//        binding.fabRefreshPokemonList.setOnClickListener {
+//            viewModel.refresh()
+//        }
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
             if (destination.id == R.id.pokemonDetailFragment) {
