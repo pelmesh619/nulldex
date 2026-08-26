@@ -1,5 +1,6 @@
 package org.pelmeshke.nulldex.data.repository
 
+import org.pelmeshke.nulldex.data.model.AnalyticsEvent
 import org.pelmeshke.nulldex.data.api.RetrofitInstance
 
 class PokemonRepository {
@@ -10,4 +11,9 @@ class PokemonRepository {
 
     suspend fun getPokemon(name: String) =
         api.getPokemon(name)
+
+    suspend fun getPokemonUIConfig() = RetrofitInstance.uiApi.getPokemonUIConfig()
+
+    suspend fun sendAnalyticsEvent(event: AnalyticsEvent) =
+        RetrofitInstance.analyticsApi.sendEvent(event)
 }
