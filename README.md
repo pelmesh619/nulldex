@@ -17,6 +17,15 @@ Features:
 * **Offline cache** - PokéAPI list and detail responses are stored on disk
 * **Server-driven UI** - detail layout is described by JSON, with an optional remote config URL
 
+<div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; max-width: 100%;">
+  <div style="flex: 1; min-width: 200px; max-width: 48%;">
+    <img src="nulldex_pokemon_list.jpg" alt="List" style="width: 100%; height: auto; border-radius: 8px;">
+  </div>
+  <div style="flex: 1; min-width: 200px; max-width: 48%;">
+    <img src="nulldex_pokemon_detail.jpg" alt="Detail" style="width: 100%; height: auto; border-radius: 8px;">
+  </div>
+</div>
+
 ## How to build?
 
 Requirements:
